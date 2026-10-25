@@ -1,49 +1,28 @@
-# Stock-price-change-notifier
-This programme notify the stock price changes with the news using mails
-This Python script retrieves stock data for a specific company (Tesla Inc in this case) from the Alpha Vantage API, compares the closing prices of the stock for two consecutive days, and sends an email containing recent news articles related to the company's stock.
+# Stock Price and News Notifier
 
-Let's break down the script:
+A Python automation project that compares recent stock closing prices, fetches related news, and emails a short market update.
 
-Import Statements:
+## Workflow
 
-requests: Used for making HTTP requests.
-smtplib: Library for sending emails.
-MIMEText: A module to create MIMEText objects representing email messages.
-Constants:
+- Fetch daily price data from Alpha Vantage
+- Compare the two most recent closing prices
+- Calculate the percentage movement and direction
+- Fetch up to three matching articles from NewsAPI
+- Send the formatted summaries through Gmail SMTP
 
-STOCK_NAME: The symbol of the stock (e.g., "TSLA" for Tesla).
-COMPANY_NAME: The name of the company.
-STOCK_ENDPOINT: The URL for Alpha Vantage API.
-NEWS_ENDPOINT: The URL for the News API.
-NEWS_API_KEY: API key for the News API.
-STOCK_API_KEY: API key for the Alpha Vantage API.
-API Parameters:
+## Requirements
 
-stock_parameters: Parameters for querying stock data from the Alpha Vantage API.
-news_parameters: Parameters for querying news articles related to the company from the News API.
-Fetching Stock Data:
+```bash
+pip install requests
+```
 
-The script sends a GET request to the Alpha Vantage API to retrieve daily stock data for the specified company.
-It extracts the closing prices for the last two days and calculates the price difference and percentage change.
-Fetching News Articles:
+## Security warning
 
-It sends a GET request to the News API to fetch news articles related to the company.
-The script retrieves the headlines and descriptions of the top three articles.
-Formatting News Articles:
+> [!CAUTION]
+> The current source contains exposed API keys and personal-looking email addresses. Treat those values as compromised: revoke and regenerate the keys, remove them from public source/history, and replace addresses with approved configuration before running the script.
 
-The script formats the retrieved articles into a readable format containing the stock symbol, price change percentage, headline, and brief description.
-Sending Emails:
+Store new values outside the repository, for example in environment variables or a secret manager. Never commit SMTP passwords or API keys.
 
-It configures an SMTP connection to Gmail and sends an email for each formatted news article to the specified recipient email address.
-The email subject is "Stock price difference".
-Comments and Print Statements:
+## Notes
 
-The script contains commented out code related to MIMEText objects for email content formatting.
-It also includes print statements for debugging purposes, displaying HTTP response codes and retrieved data.
-Overall, this script demonstrates how to retrieve stock data, fetch related news articles, format the information, and send it via email using Python.
-
-
-
-
-
-
+The current threshold condition runs for every calculated change (`abs(diff_percent) >= 0`). Adjust it if notifications should be sent only after a meaningful movement.
