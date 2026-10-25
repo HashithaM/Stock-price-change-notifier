@@ -1,77 +1,70 @@
-import requests
+import os
 import smtplib
-from email.mime.text import MIMEText
+
+import requests
+
 
 STOCK_NAME = "TSLA"
 COMPANY_NAME = "Tesla Inc"
-
 STOCK_ENDPOINT = "https://www.alphavantage.co/query"
 NEWS_ENDPOINT = "https://newsapi.org/v2/everything"
-NEWS_API_KEY = "6adf5849ff3047faaf64421280929ece"
-STOCK_API_KEY = "RG5MNAJRDH7ESBOA"
-
-stock_parameters = {
-    "function": "TIME_SERIES_DAILY",
-    "symbol": STOCK_NAME,
-    "datatype": "json",
-    "apikey": STOCK_API_KEY,
-}
-news_parameters = {
-    "apiKey": NEWS_API_KEY,
-    "qInTitle": COMPANY_NAME,
-}
 
 
-# STEP 1: Use https://www.alphavantage.co/documentation/#daily
-
-response = requests.get(url=STOCK_ENDPOINT, params=stock_parameters)
-response.raise_for_status()
-print(response.status_code)
-data = response.json()["Time Series (Daily)"]
-data_list = [value for (key, value) in data.items()]
-print(data_list)
-yesterday_data = data_list[0]
-yesterday_closing_price = yesterday_data["4. close"]
+def required_env(name):
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
 
 
-day_before_yesterday_data = data_list[1]
-day_before_yesterday_closing_price = day_before_yesterday_data["4. close"]
+def main():
+    stock_api_key = required_env("ALPHA_VANTAGE_API_KEY")
+    news_api_key = required_env("NEWS_API_KEY")
+    smtp_user = required_env("SMTP_USER")
+    smtp_password = required_env("SMTP_PASSWORD")
+    notification_recipient = required_env("NOTIFICATION_RECIPIENT")
 
-difference = (float(yesterday_closing_price) - float(day_before_yesterday_closing_price))
-up_down = None
-if difference > 0:
-    up_down = "UP "
-else:
-    up_down = "DOWN "
+    stock_parameters = {
+        "function": "TIME_SERIES_DAILY",
+        "symbol": STOCK_NAME,
+        "datatype": "json",
+        "apikey": stock_api_key,
+    }
+    news_parameters = {
+        "apiKey": news_api_key,
+        "qInTitle": COMPANY_NAME,
+    }
 
-diff_percent = round((difference / float(yesterday_closing_price)) * 100)
+    response = requests.get(url=STOCK_ENDPOINT, params=stock_parameters, timeout=30)
+    response.raise_for_status()
+    data_list = list(response.json()["Time Series (Daily)"].values())
 
-if abs(diff_percent) >= 0:
-    news_response = requests.get(url=NEWS_ENDPOINT, params=news_parameters)
-    news_response.raise_for_status()
-    print(news_response.status_code)
-    articles = news_response.json()["articles"]
+    yesterday_closing_price = float(data_list[0]["4. close"])
+    day_before_closing_price = float(data_list[1]["4. close"])
+    difference = yesterday_closing_price - day_before_closing_price
+    direction = "UP" if difference > 0 else "DOWN"
+    diff_percent = round((difference / yesterday_closing_price) * 100)
 
-# STEP 2: https://newsapi.org/
+    if abs(diff_percent) >= 0:
+        news_response = requests.get(url=NEWS_ENDPOINT, params=news_parameters, timeout=30)
+        news_response.raise_for_status()
+        articles = news_response.json()["articles"][:3]
+        formatted_articles = [
+            f"{STOCK_NAME}: {direction} {diff_percent}%\n"
+            f"Headline: {article['title']}\nBrief: {article['description']}"
+            for article in articles
+        ]
 
-    three_articles = articles[:3]
-    print(three_articles)
-
-    formatted_articles = [f"{STOCK_NAME}: {up_down}{diff_percent}% \nHeadline: {article['title']}. \n Brief: {article['description']}" for article in three_articles]
-    print(formatted_articles)
-
-# STEP 3: Use twilio.com/docs/sms/quickstart/python
-    my_email = "pythontesting0032@gmail.com"
-    password = ""
-
-    for article in formatted_articles:
-        # article = MIMEText(article, 'plain', 'utf-8')
-        print(article)
-        with smtplib.SMTP("smtp.gmail.com") as connection:
+        with smtplib.SMTP("smtp.gmail.com", 587) as connection:
             connection.starttls()
-            connection.login(user=my_email, password=password)
-            connection.sendmail(from_addr=my_email,
-                                to_addrs="kanthiwijesinghe71@gmail.com",
-                                msg=f"subject:Stock price difference\n\n{article}")
-            connection.close()
+            connection.login(user=smtp_user, password=smtp_password)
+            for article in formatted_articles:
+                connection.sendmail(
+                    from_addr=smtp_user,
+                    to_addrs=notification_recipient,
+                    msg=f"Subject: Stock price difference\n\n{article}",
+                )
 
+
+if __name__ == "__main__":
+    main()

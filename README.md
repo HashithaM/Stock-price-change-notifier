@@ -16,12 +16,20 @@ A Python automation project that compares recent stock closing prices, fetches r
 pip install requests
 ```
 
-## Security warning
+## Configuration
 
-> [!CAUTION]
-> The current source contains exposed API keys and personal-looking email addresses. Treat those values as compromised: revoke and regenerate the keys, remove them from public source/history, and replace addresses with approved configuration before running the script.
+The script requires five environment variables and fails before network access if any is missing:
 
-Store new values outside the repository, for example in environment variables or a secret manager. Never commit SMTP passwords or API keys.
+- `ALPHA_VANTAGE_API_KEY`
+- `NEWS_API_KEY`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `NOTIFICATION_RECIPIENT`
+
+Copy the dummy names from `.env.example` into your own private environment. The script does not automatically load `.env`, and `.env` is ignored by Git.
+
+> [!IMPORTANT]
+> Revoke and regenerate any key that appeared in an earlier public revision. Replacing the current source does not invalidate exposed credentials or erase Git history.
 
 ## Notes
 
